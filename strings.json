@@ -1,0 +1,25 @@
+{
+    "config": {
+      "step": {
+        "user": {
+          "title": "Set up CSV Logger",
+          "description": "Are you sure you want to set up CSV Logger?"
+        }
+      },
+      "abort": {
+        "one_instance_allowed": "Only a single instance is necessary."
+      }
+    },
+    "options": {
+      "step": {
+        "init": {
+          "data": {
+            "file_path": "File Path"
+          }
+        }
+      },
+      "error": {
+        
+      }
+    }
+  }

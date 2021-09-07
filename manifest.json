@@ -1,0 +1,9 @@
+{
+    "domain": "csvlogger",
+    "name": "CSVLogger",
+    "documentation": "https://github.com/vladkozlov69/ha_csvlogger",
+    "requirements": [],
+    "codeowners": ["@vladkozlov69"],
+    "config_flow": false,
+    "version": "0.0.1"
+  }
