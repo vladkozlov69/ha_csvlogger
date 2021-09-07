@@ -65,8 +65,7 @@ class Gateway():
         file_handler = None
         try:
             while True:
-                # for i in range(2):
-                await asyncio.sleep(1)
+                await asyncio.sleep(time_interval)
                 await csv_file_service.execute()
         except asyncio.CancelledError:
             _LOGGER.info('cancelled!!')
