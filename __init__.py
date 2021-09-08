@@ -13,11 +13,11 @@ from homeassistant.components.sensor import PLATFORM_SCHEMA
 from homeassistant.const import EVENT_HOMEASSISTANT_STOP
 
 from .const import (
-    DOMAIN, 
-    CSVLOGGER_GATEWAY, 
-    CONF_TIME_INTERVAL, 
-    CONF_FILE_PATH, 
-    CONF_FILE_PATTERN, 
+    DOMAIN,
+    CSVLOGGER_GATEWAY,
+    CONF_TIME_INTERVAL,
+    CONF_FILE_PATH,
+    CONF_FILE_PATTERN,
     CONF_COLUMNS
 )
 
@@ -36,7 +36,8 @@ PLATFORM_SCHEMA = [].extend(
         vol.Optional(CONF_TIME_INTERVAL, default=60): cv.positive_int,
         vol.Required(CONF_FILE_PATH): cv.string,
         vol.Required(CONF_FILE_PATTERN): cv.string,
-        vol.Optional(CONF_COLUMNS, default=[]): vol.All(cv.ensure_list, [COLUMN_SCHEMA]),
+        vol.Optional(CONF_COLUMNS, default=[]): vol.All(cv.ensure_list,
+                                                        [COLUMN_SCHEMA]),
     }
 )
 

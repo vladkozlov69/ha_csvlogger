@@ -13,11 +13,11 @@ from homeassistant.core import callback
 from homeassistant.helpers import template
 
 from .const import (
-    DOMAIN, 
+    DOMAIN,
     CSVLOGGER_GATEWAY,
-    CONF_TIME_INTERVAL, 
-    CONF_FILE_PATH, 
-    CONF_FILE_PATTERN, 
+    CONF_TIME_INTERVAL,
+    CONF_FILE_PATH,
+    CONF_FILE_PATTERN,
     CONF_COLUMNS
 )
 
@@ -26,6 +26,7 @@ from .exceptions import CSVLoggerGatewayException
 
 _LOGGER = logging.getLogger(__name__)
 _LOGGER.setLevel(logging.DEBUG)
+
 
 class Gateway():
     """CSVLogger Gateway."""
@@ -46,7 +47,8 @@ class Gateway():
         file_pattern = self._config_entry.data[CONF_FILE_PATTERN]
         columns = self._config_entry.data[CONF_COLUMNS]
 
-        self._csv_file_service = CSVLoggerService(file_path, file_pattern, columns, self._hass)
+        self._csv_file_service = CSVLoggerService(file_path, file_pattern,
+                                                  columns, self._hass)
 
         _LOGGER.debug('Starting csv logging task')
 
@@ -63,8 +65,6 @@ class Gateway():
         csv_file_service,
         **kwargs,
     ):
-        logged_error = False
-        file_handler = None
         timer_time = 0
         try:
             while True:
@@ -78,7 +78,6 @@ class Gateway():
             await csv_file_service.flush()
             raise
 
- 
     @callback
     def stop_processing(self, event):
         """Close resources."""
@@ -86,10 +85,12 @@ class Gateway():
         if self._data_logging_task:
             self._data_logging_task.cancel()
 
+
 @dataclass
 class CSVColumn:
     name: str
     template: template.Template
+
 
 class CSVLoggerService():
     """CSV Logger Service"""
@@ -104,9 +105,13 @@ class CSVLoggerService():
         self._hass = hass
         self._file_path = file_path
         self._file_pattern = file_pattern
-        self._columns = list(map(lambda col: CSVColumn(name=col['name'], 
-                                                       template=template.Template(col['template'], hass)), 
+        self._columns = list(map(lambda col:
+                                 CSVColumn(name=col['name'],
+                                           template=template.Template(
+                                               col['template'],
+                                               hass)),
                                  columns))
+
     async def prepare_file(self):
         """Checks whether we need to open a handle"""
         file_name = datetime.now().strftime(self._file_pattern)
@@ -142,16 +147,18 @@ class CSVLoggerService():
             _LOGGER.debug('Closed file %s' % self._current_file_name)
             self._current_file_name = None
 
+
 def create_csvlogger_gateway(config_entry, hass):
     """Create the gateway."""
     gateway = Gateway(config_entry, hass)
     return gateway
 
+
 def get_csv_file_service(hass):
     """Get the SMS notification service."""
 
     if CSVLOGGER_GATEWAY not in hass.data[DOMAIN]:
-        _LOGGER.error("CSV Logger gateway not found, cannot initialize service")
+        _LOGGER.error("CSV Logger gateway not found")
         raise CSVLoggerGatewayException("CSV Logger gateway not found")
 
     gateway = hass.data[DOMAIN][CSVLOGGER_GATEWAY]
