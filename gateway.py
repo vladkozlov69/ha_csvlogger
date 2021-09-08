@@ -131,16 +131,15 @@ class CSVLoggerService():
         writer.writerow(row)
 
     async def execute(self):
-        _LOGGER.debug('Ping')
         is_new = await self.prepare_file()
         await self.render_data(is_new)
 
     async def flush(self):
-        _LOGGER.info('flushing...')
+        _LOGGER.debug('Flushing...')
         if (self._file_handle is not None):
             self._file_handle.close()
             self._file_handle = None
-            _LOGGER.info('closed file. %s' % self._current_file_name)
+            _LOGGER.debug('Closed file %s' % self._current_file_name)
             self._current_file_name = None
 
 def create_csvlogger_gateway(config_entry, hass):
