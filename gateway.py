@@ -3,6 +3,7 @@ import logging
 import asyncio
 import csv
 import os
+import time
 
 from pathlib import Path
 from datetime import datetime
@@ -13,6 +14,7 @@ from homeassistant.helpers import template
 
 from .const import (
     DOMAIN, 
+    CSVLOGGER_GATEWAY,
     CONF_TIME_INTERVAL, 
     CONF_FILE_PATH, 
     CONF_FILE_PATTERN, 
@@ -63,10 +65,14 @@ class Gateway():
     ):
         logged_error = False
         file_handler = None
+        timer_time = 0
         try:
             while True:
-                await asyncio.sleep(time_interval)
-                await csv_file_service.execute()
+                await asyncio.sleep(1)
+                if (time.time() - timer_time > time_interval):
+                    await csv_file_service.execute()
+                    timer_time = time.time()
+
         except asyncio.CancelledError:
             _LOGGER.info('cancelled!!')
             await csv_file_service.flush()
@@ -110,6 +116,7 @@ class CSVLoggerService():
             is_new = not Path(actual_file_name).exists()
             self._current_file_name = actual_file_name
             self._file_handle = open(actual_file_name, 'a')
+            _LOGGER.debug('Opened file %s' % actual_file_name)
             return is_new
         return False
 
@@ -124,6 +131,7 @@ class CSVLoggerService():
         writer.writerow(row)
 
     async def execute(self):
+        _LOGGER.debug('Ping')
         is_new = await self.prepare_file()
         await self.render_data(is_new)
 
@@ -133,8 +141,20 @@ class CSVLoggerService():
             self._file_handle.close()
             self._file_handle = None
             _LOGGER.info('closed file. %s' % self._current_file_name)
+            self._current_file_name = None
 
 def create_csvlogger_gateway(config_entry, hass):
     """Create the gateway."""
     gateway = Gateway(config_entry, hass)
     return gateway
+
+def get_csv_file_service(hass):
+    """Get the SMS notification service."""
+
+    if CSVLOGGER_GATEWAY not in hass.data[DOMAIN]:
+        _LOGGER.error("CSV Logger gateway not found, cannot initialize service")
+        raise CSVLoggerGatewayException("CSV Logger gateway not found")
+
+    gateway = hass.data[DOMAIN][CSVLOGGER_GATEWAY]
+
+    return gateway._csv_file_service

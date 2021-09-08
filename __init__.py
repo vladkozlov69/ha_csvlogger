@@ -21,7 +21,7 @@ from .const import (
     CONF_COLUMNS
 )
 
-from .gateway import create_csvlogger_gateway
+from .gateway import create_csvlogger_gateway, get_csv_file_service
 
 
 COLUMN_SCHEMA = vol.Schema(
@@ -61,6 +61,12 @@ async def async_setup(hass, config):
 async def async_setup_entry(hass, config_entry):
     """Set up the CSV Logget component."""
 
+    @callback
+    async def handle_flush(call):
+        """Handle the sms deleting service call."""
+        csv_file_service = get_csv_file_service(hass)
+        await csv_file_service.flush()
+
     hass.data.setdefault(DOMAIN, {})
 
     _LOGGER.debug("Before create_csvlogger_gateway")
@@ -75,6 +81,10 @@ async def async_setup_entry(hass, config_entry):
     hass.data[DOMAIN][CSVLOGGER_GATEWAY] = gateway
 
     await gateway.async_added_to_hass()
+
+    hass.services.async_register(DOMAIN,
+                                 'flush',
+                                 handle_flush)
 
     hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STOP,
                                gateway.stop_processing)
