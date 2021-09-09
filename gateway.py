@@ -65,14 +65,13 @@ class Gateway():
         csv_file_service,
         **kwargs,
     ):
-        timer_time = 0
+        next_call_time = time.time()
         try:
             while True:
-                await asyncio.sleep(1)
-                if (time.time() - timer_time > time_interval):
+                await asyncio.sleep(0.1)
+                if (time.time() >= (next_call_time - 0.1)):
+                    next_call_time = next_call_time + time_interval
                     await csv_file_service.execute()
-                    timer_time = time.time()
-
         except asyncio.CancelledError:
             _LOGGER.info('cancelled!!')
             await csv_file_service.flush()
