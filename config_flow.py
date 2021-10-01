@@ -2,11 +2,11 @@ import logging
 import voluptuous as vol
 
 from homeassistant import config_entries, data_entry_flow
-from .const import DOMAIN, CONF_FILE_PATH
+from .const import DOMAIN, CONF_TIME_INTERVAL
 
 DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_FILE_PATH): str
+        vol.Required(CONF_TIME_INTERVAL): str
     }
 )
 

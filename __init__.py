@@ -16,6 +16,7 @@ from .const import (
     DOMAIN,
     CSVLOGGER_GATEWAY,
     CONF_TIME_INTERVAL,
+    CONF_TABLES,
     CONF_FILE_PATH,
     CONF_FILE_PATTERN,
     CONF_COLUMNS
@@ -31,13 +32,20 @@ COLUMN_SCHEMA = vol.Schema(
     }
 )
 
-PLATFORM_SCHEMA = [].extend(
+TABLE_SCHEMA = vol.Schema(
     {
-        vol.Optional(CONF_TIME_INTERVAL, default=60): cv.positive_int,
         vol.Required(CONF_FILE_PATH): cv.string,
         vol.Required(CONF_FILE_PATTERN): cv.string,
         vol.Optional(CONF_COLUMNS, default=[]): vol.All(cv.ensure_list,
                                                         [COLUMN_SCHEMA]),
+    }
+)
+
+PLATFORM_SCHEMA = [].extend(
+    {
+        vol.Optional(CONF_TIME_INTERVAL, default=60): cv.positive_int,
+        vol.Required(CONF_TABLES, default=[]): vol.All(cv.ensure_list,
+                                                       [TABLE_SCHEMA]),
     }
 )
 
@@ -60,7 +68,7 @@ async def async_setup(hass, config):
 
 
 async def async_setup_entry(hass, config_entry):
-    """Set up the CSV Logget component."""
+    """Set up the CSV Logger component."""
 
     @callback
     async def handle_flush(call):

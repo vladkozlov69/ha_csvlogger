@@ -16,6 +16,7 @@ from .const import (
     DOMAIN,
     CSVLOGGER_GATEWAY,
     CONF_TIME_INTERVAL,
+    CONF_TABLES,
     CONF_FILE_PATH,
     CONF_FILE_PATTERN,
     CONF_COLUMNS
@@ -43,12 +44,9 @@ class Gateway():
     async def async_added_to_hass(self):
         """Handle when an entity is about to be added to Home Assistant."""
         time_interval = self._config_entry.data[CONF_TIME_INTERVAL]
-        file_path = self._config_entry.data[CONF_FILE_PATH]
-        file_pattern = self._config_entry.data[CONF_FILE_PATTERN]
-        columns = self._config_entry.data[CONF_COLUMNS]
+        tables = self._config_entry.data[CONF_TABLES]
 
-        self._csv_file_service = CSVLoggerService(file_path, file_pattern,
-                                                  columns, self._hass)
+        self._csv_file_service = CSVLoggerService(tables, self._hass)
 
         _LOGGER.debug('Starting csv logging task')
 
@@ -94,6 +92,31 @@ class CSVColumn:
 class CSVLoggerService():
     """CSV Logger Service"""
     _hass = None
+    _tables = None
+    _file_processors = []
+
+    def __init__(self, tables, hass):
+        self._hass = hass
+        self._tables = tables
+        for table in self._tables:
+            file_path = table[CONF_FILE_PATH]
+            file_pattern = table[CONF_FILE_PATTERN]
+            columns = table[CONF_COLUMNS]
+            self._file_processors.append(CSVFileProcessor(file_path,
+                                                          file_pattern,
+                                                          columns,
+                                                          hass))
+
+    async def execute(self):
+        for proc in self._file_processors:
+            await proc.execute()
+
+    async def flush(self):
+        for proc in self._file_processors:
+            await proc.flush()
+
+
+class CSVFileProcessor():
     _file_path = None
     _file_pattern = None
     _columns = []
@@ -101,7 +124,6 @@ class CSVLoggerService():
     _file_handle = None
 
     def __init__(self, file_path, file_pattern, columns, hass):
-        self._hass = hass
         self._file_path = file_path
         self._file_pattern = file_pattern
         self._columns = list(map(lambda col:
