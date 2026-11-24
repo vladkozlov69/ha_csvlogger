@@ -72,10 +72,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             )
         )
 
-    async def handle_reload(call: ServiceCall) -> None:
+    async def handle_reload(_call: ServiceCall) -> None:
+        _LOGGER.debug("Reload requested in service context %s", _call.context.id)
         await async_reload(hass)
 
-    async def handle_flush(call: ServiceCall) -> None:
+    async def handle_flush(_call: ServiceCall) -> None:
+        _LOGGER.debug("Flush requested in service context %s", _call.context.id)
         await async_flush(hass)
 
     async_register_admin_service(hass, DOMAIN, "reload", handle_reload)
@@ -150,7 +152,10 @@ async def async_unload_entry(
 ) -> bool:
     """Unload the CSV Logger component."""
     gateway = hass.data.get(DOMAIN, {}).get(CSVLOGGER_GATEWAY)
-    if gateway is not None:
+    if (
+        gateway is not None
+        and gateway._config_entry.entry_id == config_entry.entry_id
+    ):
         await gateway.async_shutdown()
         hass.data[DOMAIN].pop(CSVLOGGER_GATEWAY, None)
 

@@ -2,12 +2,15 @@
 
 import asyncio
 from types import SimpleNamespace
+from typing import Any, cast
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 import voluptuous as vol
 
 from homeassistant import data_entry_flow
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
 
 from csvlogger import (
     CONFIG_SCHEMA,
@@ -29,7 +32,7 @@ from csvlogger.const import (
 from csvlogger.gateway import CSVLoggerService, Gateway
 
 
-VALID_CONFIG = {
+VALID_CONFIG: dict[str, Any] = {
     DOMAIN: {
         CONF_TABLES: [
             {
@@ -43,10 +46,18 @@ VALID_CONFIG = {
 
 
 def test_config_schema_accepts_yaml_and_applies_defaults():
-    validated = CONFIG_SCHEMA(VALID_CONFIG)
+    validated = cast(dict[str, Any], CONFIG_SCHEMA(VALID_CONFIG))
+    validated_domain = validated[DOMAIN]
+    assert isinstance(validated_domain, dict)
+    tables = validated_domain[CONF_TABLES]
+    assert isinstance(tables, list)
+    columns = tables[0][CONF_COLUMNS]
+    assert isinstance(columns, list)
+    column = columns[0]
+    assert isinstance(column, dict)
 
-    assert validated[DOMAIN][CONF_TIME_INTERVAL] == 60
-    assert validated[DOMAIN][CONF_TABLES][0][CONF_COLUMNS][0]["name"] == "sample"
+    assert validated_domain[CONF_TIME_INTERVAL] == 60
+    assert column["name"] == "sample"
 
 
 @pytest.mark.parametrize(
@@ -94,7 +105,9 @@ async def test_reload_reimports_validated_yaml(monkeypatch):
     config_entries = SimpleNamespace(
         flow=SimpleNamespace(async_init=AsyncMock())
     )
-    hass = SimpleNamespace(config_entries=config_entries)
+    hass = cast(
+        HomeAssistant, SimpleNamespace(config_entries=config_entries)
+    )
     read_config = AsyncMock(return_value=VALID_CONFIG)
     monkeypatch.setattr("csvlogger.async_integration_yaml_config", read_config)
 
@@ -112,7 +125,7 @@ async def test_reload_reimports_validated_yaml(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_setup_registers_reload_and_flush_handlers(monkeypatch):
-    hass = SimpleNamespace(services=Mock())
+    hass = cast(HomeAssistant, SimpleNamespace(services=Mock()))
     reload = AsyncMock()
     flush = AsyncMock()
     register_service = Mock()
@@ -141,7 +154,9 @@ async def test_yaml_import_updates_existing_entry():
         async_update_entry=Mock(),
     )
     flow = Mock()
-    flow.hass = SimpleNamespace(config_entries=config_entries)
+    flow.hass = cast(
+        HomeAssistant, SimpleNamespace(config_entries=config_entries)
+    )
     flow._async_current_entries.return_value = [existing_entry]
     new_data = VALID_CONFIG[DOMAIN]
 
@@ -156,8 +171,10 @@ async def test_yaml_import_updates_existing_entry():
 @pytest.mark.asyncio
 async def test_entry_update_reloads_integration():
     config_entries = SimpleNamespace(async_reload=AsyncMock())
-    hass = SimpleNamespace(config_entries=config_entries)
-    entry = SimpleNamespace(entry_id="csvlogger-entry")
+    hass = cast(
+        HomeAssistant, SimpleNamespace(config_entries=config_entries)
+    )
+    entry = cast(ConfigEntry, SimpleNamespace(entry_id="csvlogger-entry"))
 
     await async_update_listener(hass, entry)
 
@@ -182,10 +199,16 @@ async def test_gateway_shutdown_waits_for_task_and_flushes():
 
 @pytest.mark.asyncio
 async def test_unload_stops_and_removes_gateway():
-    gateway = SimpleNamespace(async_shutdown=AsyncMock())
-    hass = SimpleNamespace(data={DOMAIN: {CSVLOGGER_GATEWAY: gateway}})
+    entry = cast(ConfigEntry, SimpleNamespace(entry_id="csvlogger-entry"))
+    gateway = SimpleNamespace(
+        _config_entry=entry,
+        async_shutdown=AsyncMock(),
+    )
+    hass = cast(
+        HomeAssistant, SimpleNamespace(data={DOMAIN: {CSVLOGGER_GATEWAY: gateway}})
+    )
 
-    assert await async_unload_entry(hass, SimpleNamespace())
+    assert await async_unload_entry(hass, entry)
 
     gateway.async_shutdown.assert_awaited_once()
     assert CSVLOGGER_GATEWAY not in hass.data[DOMAIN]
