@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Vladimir Kozlov <vkozloff@gmail.com>
+# SPDX-License-Identifier: MIT
+
 """Load this standalone integration as a package for unit tests."""
 
 from importlib.util import module_from_spec, spec_from_file_location
