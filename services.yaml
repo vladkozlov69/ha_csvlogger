@@ -1,2 +1,4 @@
 flush:
-  description: Flushes current csv writer buffer
+  description: Flushes currently open CSV files.
+reload:
+  description: Reloads CSVLogger YAML configuration without restarting Home Assistant.

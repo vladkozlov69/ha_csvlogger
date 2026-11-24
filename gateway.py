@@ -31,14 +31,13 @@ _LOGGER.setLevel(logging.DEBUG)
 
 class Gateway():
     """CSVLogger Gateway."""
-    _config_entry = None
-    _data_logging_task = None
-    _csv_file_service = None
 
     def __init__(self, config_entry, hass):
         """Initialize the CSVLogger gateway."""
         self._hass = hass
         self._config_entry = config_entry
+        self._data_logging_task = None
+        self._csv_file_service = None
         _LOGGER.debug('Initialized, config = [%s]', config_entry)
 
     async def async_added_to_hass(self):
@@ -78,9 +77,21 @@ class Gateway():
     @callback
     def stop_processing(self, event):
         """Close resources."""
-        _LOGGER.warn("Stopping processing")
+        _LOGGER.warning("Stopping processing")
         if self._data_logging_task:
             self._data_logging_task.cancel()
+
+    async def async_shutdown(self):
+        """Stop the logging loop and wait for its cleanup."""
+        if self._data_logging_task is None:
+            return
+
+        self._data_logging_task.cancel()
+        try:
+            await self._data_logging_task
+        except asyncio.CancelledError:
+            pass
+        self._data_logging_task = None
 
 
 @dataclass
@@ -93,11 +104,11 @@ class CSVLoggerService():
     """CSV Logger Service"""
     _hass = None
     _tables = None
-    _file_processors = []
 
     def __init__(self, tables, hass):
         self._hass = hass
         self._tables = tables
+        self._file_processors = []
         for table in self._tables:
             file_path = table[CONF_FILE_PATH]
             file_pattern = table[CONF_FILE_PATTERN]
@@ -117,15 +128,11 @@ class CSVLoggerService():
 
 
 class CSVFileProcessor():
-    _file_path = None
-    _file_pattern = None
-    _columns = []
-    _current_file_name = None
-    _file_handle = None
-
     def __init__(self, file_path, file_pattern, columns, hass):
         self._file_path = file_path
         self._file_pattern = file_pattern
+        self._current_file_name = None
+        self._file_handle = None
         self._columns = list(map(lambda col:
                                  CSVColumn(name=col['name'],
                                            template=template.Template(
