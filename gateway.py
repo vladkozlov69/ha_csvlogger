@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass
+from typing import Any, TextIO
 
 from homeassistant.core import callback
 from homeassistant.helpers import template
@@ -128,18 +129,19 @@ class CSVLoggerService():
 
 
 class CSVFileProcessor():
-    def __init__(self, file_path, file_pattern, columns, hass):
+    def __init__(self, file_path: str, file_pattern: str, columns: list[dict[str, Any]], hass):
         self._file_path = file_path
         self._file_pattern = file_pattern
-        self._current_file_name = None
-        self._file_handle = None
+        self._current_file_name: str | None = None
+        self._file_handle: TextIO | None = None
         self._hass = hass
-        self._columns = list(map(lambda col:
-                                 CSVColumn(name=col['name'],
-                                           template=template.Template(
-                                               col['template'],
-                                               hass)),
-                                 columns))
+        self._columns = [
+            CSVColumn(
+                name=col['name'],
+                template=template.Template(col['template'], hass),
+            )
+            for col in columns
+        ]
 
     def _flush_sync(self):
         _LOGGER.debug('Flushing...')
@@ -167,6 +169,8 @@ class CSVFileProcessor():
         return await self._hass.async_add_executor_job(self._prepare_file_sync)
 
     def _write_row_sync(self, row, is_new_file):
+        if self._file_handle is None:
+            raise RuntimeError("CSV file handle is not open")
         fieldnames = list(map(lambda col: col.name, self._columns))
         writer = csv.DictWriter(self._file_handle, fieldnames=fieldnames)
         if is_new_file:
