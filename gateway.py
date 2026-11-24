@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass
+from typing import Any, TextIO
 
 from homeassistant.core import callback
 from homeassistant.helpers import template
@@ -128,24 +129,34 @@ class CSVLoggerService():
 
 
 class CSVFileProcessor():
-    def __init__(self, file_path, file_pattern, columns, hass):
+    def __init__(self, file_path: str, file_pattern: str, columns: list[dict[str, Any]], hass):
         self._file_path = file_path
         self._file_pattern = file_pattern
-        self._current_file_name = None
-        self._file_handle = None
-        self._columns = list(map(lambda col:
-                                 CSVColumn(name=col['name'],
-                                           template=template.Template(
-                                               col['template'],
-                                               hass)),
-                                 columns))
+        self._current_file_name: str | None = None
+        self._file_handle: TextIO | None = None
+        self._hass = hass
+        self._columns = [
+            CSVColumn(
+                name=col['name'],
+                template=template.Template(col['template'], hass),
+            )
+            for col in columns
+        ]
 
-    async def prepare_file(self):
-        """Checks whether we need to open a handle"""
+    def _flush_sync(self):
+        _LOGGER.debug('Flushing...')
+        if self._file_handle is not None:
+            self._file_handle.close()
+            self._file_handle = None
+            _LOGGER.debug('Closed file %s' % self._current_file_name)
+            self._current_file_name = None
+
+    def _prepare_file_sync(self):
+        """Checks whether we need to open a handle."""
         file_name = datetime.now().strftime(self._file_pattern)
         actual_file_name = os.path.join(self._file_path, file_name)
-        if (actual_file_name != self._current_file_name):
-            await self.flush()
+        if actual_file_name != self._current_file_name:
+            self._flush_sync()
             is_new = not Path(actual_file_name).exists()
             self._current_file_name = actual_file_name
             self._file_handle = open(actual_file_name, 'a')
@@ -153,27 +164,31 @@ class CSVFileProcessor():
             return is_new
         return False
 
-    async def render_data(self, is_new_file):
+    async def prepare_file(self):
+        """Checks whether we need to open a handle."""
+        return await self._hass.async_add_executor_job(self._prepare_file_sync)
+
+    def _write_row_sync(self, row, is_new_file):
+        if self._file_handle is None:
+            raise RuntimeError("CSV file handle is not open")
         fieldnames = list(map(lambda col: col.name, self._columns))
         writer = csv.DictWriter(self._file_handle, fieldnames=fieldnames)
-        if (is_new_file):
+        if is_new_file:
             writer.writeheader()
+        writer.writerow(row)
+
+    async def render_data(self, is_new_file):
         row = dict()
         for col in self._columns:
             row[col.name] = col.template.async_render()
-        writer.writerow(row)
+        await self._hass.async_add_executor_job(self._write_row_sync, row, is_new_file)
 
     async def execute(self):
         is_new = await self.prepare_file()
         await self.render_data(is_new)
 
     async def flush(self):
-        _LOGGER.debug('Flushing...')
-        if (self._file_handle is not None):
-            self._file_handle.close()
-            self._file_handle = None
-            _LOGGER.debug('Closed file %s' % self._current_file_name)
-            self._current_file_name = None
+        await self._hass.async_add_executor_job(self._flush_sync)
 
 
 def create_csvlogger_gateway(config_entry, hass):
